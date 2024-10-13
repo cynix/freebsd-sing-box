@@ -1,0 +1,58 @@
+name: FreeBSD
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        type: string
+        required: true
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create fake tag
+        run: git tag ${{ inputs.tag }}
+
+      - name: Checkout sing-box
+        uses: actions/checkout@v4
+        with:
+          repository: sagernet/sing-box
+          ref: ${{ inputs.tag }}
+          path: src
+
+      - name: Setup go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --clean
+
+      - name: Delete fake tag
+        run: git tag -d ${{ inputs.tag }}
+
+      - name: Create release
+        run: |
+          PREVIOUS=$(gh release view --json=tagName --jq=.tagName || true)
+          if [ -n "$PREVIOUS" ]; then
+            gh release delete --cleanup-tag --yes $PREVIOUS
+          fi
+          gh release create --latest=true ${{ inputs.tag }} ./dist/*.tar.gz
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  container:
+    needs: goreleaser
+    uses: ./.github/workflows/freebsd-container.yaml

@@ -1,0 +1,34 @@
+version: 2
+project_name: sing-box
+builds:
+  - dir: ./src
+    main: ./cmd/sing-box
+    flags:
+      - -v
+      - -trimpath
+    ldflags:
+      - -X github.com/sagernet/sing-box/constant.Version={{ .Version }}
+      - -s
+      - -buildid=
+    tags:
+      - with_gvisor
+      - with_quic
+      - with_dhcp
+      - with_wireguard
+      - with_ech
+      - with_utls
+      - with_reality_server
+      - with_acme
+      - with_clash_api
+    env:
+      - CGO_ENABLED=0
+    targets:
+      - freebsd_amd64
+      - freebsd_arm64
+archives:
+  - format: tar.gz
+    files:
+      - src/LICENSE
+    name_template: '{{ .ProjectName }}-{{ .Version }}-{{ .Os }}-{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}'
+release:
+  disable: true
